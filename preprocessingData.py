@@ -5,7 +5,7 @@ Created on Mon Nov  6 18:39:44 2023
 
 @author: erynd
 """
-#uploading data
+#uploading data, test
 import pandas as pd
 
 file_path = '/Users/erynd/Library/CloudStorage/OneDrive-Personal/Grad School/Deep Learning/Project/train_series.parquet'
