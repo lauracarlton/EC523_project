@@ -35,25 +35,39 @@ merged_data = pd.merge(df, csv_df, on=['series_id', 'step'], how='left')
 
 import matplotlib.pyplot as plt
 
-specific_id = '03d92c9f6f8a'
+specific_id = '038441c925bb'
 filtered_series_data = merged_data[merged_data['series_id'] == specific_id]
 
 filtered_series_data['timestamp_x'] = pd.to_datetime(filtered_series_data['timestamp_x'])
 
-start_date = '2018-06-01'
-end_date = '2018-06-03'
-filtered_date_range = filtered_series_data[(filtered_series_data['timestamp_x'] >= start_date) & (filtered_series_data['timestamp_x'] <= end_date)]
+# start_date = '2018-06-01'
+# end_date = '2018-06-03'
+# filtered_date_range = filtered_series_data[(filtered_series_data['timestamp_x'] >= start_date) & (filtered_series_data['timestamp_x'] <= end_date)]
 
 plt.figure(figsize=(12, 6))
-plt.plot(filtered_date_range['timestamp_x'], filtered_date_range['enmo'], label='ENMO')
+
+plt.plot(filtered_series_data['timestamp_x'], filtered_series_data['enmo'], label='Raw data', color='blue')
+
+onset_data = filtered_series_data[filtered_series_data['event'] == 'onset']
+for _, row in onset_data.iterrows():
+    plt.axvline(row['timestamp_x'], color='red', linestyle='--')
+
+wakeup_data = filtered_series_data[filtered_series_data['event'] == 'wakeup']
+for _, row in wakeup_data.iterrows():
+    plt.axvline(row['timestamp_x'], color='green', linestyle='--')
+
+custom_legend = [plt.Line2D([0], [0], color ='blue', label='Raw data'),
+                 plt.Line2D([0], [0], color='red', linestyle='--', label='Onset'),
+                 plt.Line2D([0], [0], color='green', linestyle='--', label='Wakeup')]
+
+
 plt.xlabel('Timestamp')
 plt.ylabel('ENMO')
-plt.title(f'ENMO vs. Timestamp for series_id: {specific_id} (June 1st to June 3rd)')
+plt.title(f'Series_id: {specific_id}')
 plt.grid(True)
-plt.legend()
+plt.legend(handles=custom_legend)
 plt.xticks(rotation=45)
 plt.tight_layout()
 plt.show()
-
 
 
