@@ -18,7 +18,7 @@ merged_data = pd.merge(df, csv_df, on=['series_id', 'step'], how='left')
 
 
 #%%
-#formating the data
+#formating the data, idk this takes forever to run but theoretically this should work
 
 merged_data = merged_data.drop('timestamp_y')
 merged_data['timestamp'] = merged_data['timestamp_x']
