@@ -154,17 +154,21 @@ merged_data['enmo_clipped'] = np.clip(merged_data['enmo'], a_min=None, a_max=thr
 
 #Formatting the data better to all the same size and into a matrix ??
 
-specific_ids = ['038441c925bb', 'f8a8da8bdd00']  # List of specific series IDs (for testing), need to change to those we want
+specific_ids = ['038441c925bb', 'f8a8da8bdd00']  #list of specific series IDs (for testing), need to change to those you want
 data = merged_data[merged_data['series_id'].isin(specific_ids)]
 
-data_matrix_enmo = data.pivot(index='series_id', columns='step', values=['enmo'])
-data_matrix_anglez = data.pivot(index='series_id', columns='step', values=['anglez'])
+data_enmo = data.pivot(index='series_id', columns='step', values='enmo')
+data_enmo.fillna(0, inplace=True)
 
-data_matrix_enmo.reset_index(inplace=True)
-data_matrix_enmo.fillna(0, inplace=True)
-data_matrix_anglez.reset_index(inplace=True)
-data_matrix_anglez.fillna(0, inplace=True)
+data_anglez = data.pivot(index='series_id', columns='step', values='anglez')
+data_anglez.fillna(0, inplace=True)
 
+data_matrix = pd.DataFrame(index=data_enmo.index)
+data_matrix['enmo'] = [data_enmo.iloc[i].values for i in range(data_enmo.shape[0])]
+data_matrix['anglez'] = [data_anglez.iloc[i].values for i in range(data_anglez.shape[0])]
+
+data_matrix.reset_index(inplace=True)
+data_matrix.columns.name = None
 
 #%%
 
