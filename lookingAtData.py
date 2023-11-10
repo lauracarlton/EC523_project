@@ -9,8 +9,9 @@ Created on Mon Nov  6 13:45:26 2023
 import pandas as pd
 
 file_path = '/Users/erynd/Library/CloudStorage/OneDrive-Personal/Grad School/Deep Learning/Project/train_series.parquet'
+file_path = '/Users/lauracarlton/Documents/child-mind-institute-detect-sleep-states/train_series.parquet'
 
-df = pd.read_parquet(file_path)
+df = pd.read_parquet(file_path, engine='pyarrow')
 
 #%%
 
@@ -20,7 +21,7 @@ print(df.head())
 #%%
 
 csv_file_path = '/Users/erynd/Library/CloudStorage/OneDrive-Personal/Grad School/Deep Learning/Project/train_events.csv'
-
+csv_file_path = '/Users/lauracarlton/Documents/child-mind-institute-detect-sleep-states/train_events.csv'
 csv_df = pd.read_csv(csv_file_path)
 
 print("First 5 rows of train_events.csv:")

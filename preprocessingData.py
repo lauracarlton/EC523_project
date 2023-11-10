@@ -8,10 +8,14 @@ Created on Mon Nov  6 18:39:44 2023
 #uploading data, test
 import pandas as pd
 
-file_path = '/Users/erynd/Library/CloudStorage/OneDrive-Personal/Grad School/Deep Learning/Project/train_series.parquet'
+# file_path = '/Users/erynd/Library/CloudStorage/OneDrive-Personal/Grad School/Deep Learning/Project/train_series.parquet'
+file_path = '/Users/lauracarlton/Documents/child-mind-institute-detect-sleep-states/train_series.parquet'
 df = pd.read_parquet(file_path)
 
-csv_file_path = '/Users/erynd/Library/CloudStorage/OneDrive-Personal/Grad School/Deep Learning/Project/train_events.csv'
+#%%
+# csv_file_path = '/Users/erynd/Library/CloudStorage/OneDrive-Personal/Grad School/Deep Learning/Project/train_events.csv'
+csv_file_path = '/Users/lauracarlton/Documents/child-mind-institute-detect-sleep-states/train_events.csv'
+
 csv_df = pd.read_csv(csv_file_path)
 
 merged_data = pd.merge(df, csv_df, on=['series_id', 'step'], how='left')
