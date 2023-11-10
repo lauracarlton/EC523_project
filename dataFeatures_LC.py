@@ -8,12 +8,12 @@ Created on Thu Nov  9 20:25:07 2023
 
 import preprocessing_func as PPF
 import pandas as pd
-from datetime import datetime 
+import numpy as np 
 from tqdm import tqdm 
 
 file_root = '/Users/lauracarlton/Documents/child-mind-institute-detect-sleep-states/'
 
-dataMatrix = PPF.dataPreProcess(file_root)
+data_matrix = PPF.dataPreProcess(file_root)
 
 
 #%% other features to add
@@ -29,10 +29,10 @@ data_matrix['timestamp'] = pd.to_datetime(data_matrix['timestamp'])
 
 
 #%%
-(.col('timestamp').str.to_datetime().dt.year()-2000).cast(pd.UInt8).alias('year'), 
-pd.col('timestamp').str.to_datetime().dt.month().cast(pd.UInt8).alias('month'),
-pd.col('timestamp').str.to_datetime().dt.day().cast(pd.UInt8).alias('day'), 
-pd.col('timestamp').str.to_datetime().dt.hour().cast(pd.UInt8).alias('hour')
+# (.col('timestamp').str.to_datetime().dt.year()-2000).cast(pd.UInt8).alias('year'), 
+# pd.col('timestamp').str.to_datetime().dt.month().cast(pd.UInt8).alias('month'),
+# pd.col('timestamp').str.to_datetime().dt.day().cast(pd.UInt8).alias('day'), 
+# pd.col('timestamp').str.to_datetime().dt.hour().cast(pd.UInt8).alias('hour')
 
 
 
@@ -54,7 +54,22 @@ for w in tqdm(range(nWindows)):
     
     
     
-
+#TODO
+# remove bad data
+#  - keep onset and following 4 hours then remove 24 hours 
+#  - keep wakeup and following 4 hours then remove 24 hours
+#  - remove NaNs -> truncate the 40 runs that have the NaNs
+#  - save to file that has clean data 
+#
+# add more features
+#  - potentially filter/fft 
+#  - first difference
+#  - rolling averages? std? max? 
+#  
+# window data
+#  - window each series_id at a time 
+# add labels to windows of data
+#  - four labels -> wakeup, awake, sleep, onset 
 
 
 
