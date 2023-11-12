@@ -5,95 +5,166 @@ Created on Thu Nov  9 19:45:11 2023
 
 @author: lauracarlton
 """
-
+from scipy.signal import butter, lfilter
+import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np 
+import os
 
-def dataLoad(path_root):
+def dataLoadClean():
+    """
+    This function loads and concatenates data from multiple parquet files and 
+    returns a single merged dataframe.
+    
+    Returns:
+        pd.DataFrame: Merged dataframe containing data from parquet files.
+    """
+    #directory of the current script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    path1 = os.path.join(script_dir, 'Data', 'training_data_cleaned_part_1.parquet')
+    path2 = os.path.join(script_dir, 'Data', 'training_data_cleaned_part_2.parquet')
+    path3 = os.path.join(script_dir, 'Data', 'training_data_cleaned_part_3.parquet')
+    path4 = os.path.join(script_dir, 'Data', 'training_data_cleaned_part_4.parquet')
+    
+    df1 = pd.read_parquet(path1, engine='pyarrow')
+    df2 = pd.read_parquet(path2, engine='pyarrow')
+    df3 = pd.read_parquet(path3, engine='pyarrow')    
+    df4 = pd.read_parquet(path4, engine='pyarrow')
+
+    df = pd.concat([df1, df2, df3, df4], ignore_index=True)
+
+    return df
+    
+
+def plot(merged_data, series_id, start_date=None, end_date=None):
+    """
+    Plot ENMO data for a specific series_id with event markers.
+    
+    Parameters:
+    merged_data (DataFrame): The merged DataFrame containing series data and events.
+    series_id (str): The series_id to filter the data by.
+    start_date (str, optional): The start date for filtering the data. Format: 'YYYY-MM-DD'.
+    end_date (str, optional): The end date for filtering the data. Format: 'YYYY-MM-DD'.
+    """
+    filtered_series_data = merged_data[merged_data['series_id'] == series_id]
+    filtered_series_data['timestamp'] = pd.to_datetime(filtered_series_data['timestamp'])
+
+    if start_date and end_date:
+        filtered_series_data = filtered_series_data[(filtered_series_data['timestamp'] >= start_date) &
+                                                    (filtered_series_data['timestamp'] <= end_date)]
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(filtered_series_data['timestamp'], filtered_series_data['enmo'], label='Raw data', color='blue')
+
+    onset_data = filtered_series_data[filtered_series_data['event'] == 'onset']
+    for _, row in onset_data.iterrows():
+        plt.axvline(row['timestamp'], color='red', linestyle='--')
+
+    wakeup_data = filtered_series_data[filtered_series_data['event'] == 'wakeup']
+    for _, row in wakeup_data.iterrows():
+        plt.axvline(row['timestamp'], color='green', linestyle='--')
+
+    custom_legend = [plt.Line2D([0], [0], color='blue', label='Raw data'),
+                     plt.Line2D([0], [0], color='red', linestyle='--', label='Onset'),
+                     plt.Line2D([0], [0], color='green', linestyle='--', label='Wakeup')]
+
+    plt.xlabel('Timestamp')
+    plt.ylabel('ENMO')
+    plt.title(f'Series_id: {series_id}')
+    plt.grid(True)
+    plt.legend(handles=custom_legend)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
+
+def low_pass_filter(data, cutoff_freq, filter_order, sampling_rate=0.2, series_id=None):
+    """
+    Apply a low-pass filter to data and plot the results.
+
+    Parameters:
+        data (numpy.ndarray): Input data to be filtered.
+        cutoff_freq (float): Cutoff frequency for the low-pass filter.
+        filter_order (int): Order of the Butterworth filter.
+        sampling_rate (float, optional): Sampling rate of the data. Default is 0.2.
+        series_id (str, optional): Series ID for filtering a specific subset of data. 
+        Default is None.
         
-    csv_path = path_root + 'train_events.csv'
-    parquet_path = path_root + 'train_series.parquet'
+
+    Returns:
+        numpy.ndarray: Filtered data.
+    """
+    if series_id:
+        data = data[data['series_id'] == series_id]['enmo']
+
+    nyquist = 0.5 * sampling_rate
+    normal_cutoff = cutoff_freq / nyquist
+    b, a = butter(filter_order, normal_cutoff, btype='low', analog=False)
+    filtered_data = lfilter(b, a, data)
     
-    df = pd.read_parquet(parquet_path, engine = 'pyarrow')
+    return filtered_data
+
+
+
+def fft(data, sampling_rate=0.2, series_id=None):
+    """
+    Perform Fast Fourier Transform (FFT) on a time-domain signal.
+
+    Parameters:
+        data (pandas.DataFrame): Input dataframe containing time-domain signals.
+        sampling_rate (float): Sampling rate of the input signals.
+        series_id (str, optional): Series ID for filtering a specific subset of data. 
+        Default is None.
+
+    Returns:
+        numpy.ndarray: Frequency values.
+        numpy.ndarray: Magnitude spectrum.
+    """
+    if series_id:
+        data = data[data['series_id'] == series_id]['enmo']
+
+    signal_data = data.to_numpy()
+
+    n = len(signal_data)
+
+    fft_result = np.fft.fft(signal_data)
+    freq = np.fft.fftfreq(n, 1.0 / sampling_rate)
     
-    
-    csv_df = pd.read_csv(csv_path)
-    
-    return csv_df, df
+    magnitude_spectrum = np.abs(fft_result) / n
 
-def findBadData(csv_df):
-    
-    #TODO - are we removing these bad cases right now?
-    
-    #finding cases where there is an 'onset' but no 'wakeup'
-    bad_cases = []
+    positive_freq_mask = freq >= 0
+    freq = freq[positive_freq_mask]
+    magnitude_spectrum = magnitude_spectrum[positive_freq_mask]
 
-    for i in range(1, len(csv_df)):
-        prev_row = csv_df.iloc[i - 1]
-        current_row = csv_df.iloc[i]
-
-        if prev_row['event'] == 'onset' and current_row['event'] == 'wakeup' and str(prev_row['step']) != 'nan' and str(current_row['step']) == 'nan':
-            bad_cases.append((prev_row['series_id'], prev_row['step'], current_row['step']))
+    return freq, magnitude_spectrum
 
 
-    #finding cases where there is a 'wakeup' but no prior 'onset'
-    bad_cases2 = []
-    
-    for i in range(1, len(csv_df)):
-        prev_row = csv_df.iloc[i - 1]
-        current_row = csv_df.iloc[i]
-    
-        if prev_row['event'] == 'onset' and current_row['event'] == 'wakeup' and str(prev_row['step']) == 'nan' and str(current_row['step']) != 'nan':
-            bad_cases2.append((prev_row['series_id'], prev_row['step'], current_row['step']))
+def rolling_average(data, window_size, series_id=None):
+    """
+    Apply a moving average filter to data.
 
-    pass
-        
+    Parameters:
+        data (numpy.ndarray): Input data to be filtered.
+        window_size (int): Size of the moving average window.
+        series_id (str, optional): Series ID for filtering a specific subset of data. 
+        Default is None.
 
-def filterData():
-    pass
-    
-def dataPreProcess(path_root, ):
+    Returns:
+        numpy.ndarray: Filtered data.
+    """
+    if series_id:
+        data = data[data['series_id'] == series_id]['enmo']
 
-    csv_df, df = dataLoad(path_root)
-    merged_data = pd.merge(df, csv_df, on=['series_id', 'step'], how='left')
-    
-    #formating the data, idk this takes forever to run but theoretically this should work
+    if window_size <= 0 or window_size > len(data):
+        raise ValueError("Invalid window size")
 
-    # merged_data = merged_data.drop('timestamp_y')
-    merged_data['timestamp'] = merged_data['timestamp_x']
-    merged_data.loc[merged_data['event']=='onset','event'] = -1
-    merged_data.loc[merged_data['event']=='wakeup','event'] = 1
-    
-    findBadData(csv_df)
-    
-    merged_data['enmo_clipped'] = np.clip(merged_data['enmo'], a_min=None, a_max=1)
+    filtered_data = np.zeros_like(data)
 
-    #Formatting the data better to all the same size and into a matrix ??
+    for i in range(len(data)):
+        start_index = max(0, i - window_size // 2)
+        end_index = min(len(data), i + window_size // 2 + 1)
+        filtered_data[i] = np.mean(data[start_index:end_index])
 
-    # specific_ids = ['038441c925bb', 'f8a8da8bdd00']  #list of specific series IDs (for testing), need to change to those you want
-    # data = merged_data[merged_data['series_id'].isin(specific_ids)]
-
-    # data_enmo = merged_data.pivot(index='series_id', columns='step', values='enmo')
-    # data_enmo.fillna(0, inplace=True)
-
-    # data_anglez = merged_data.pivot(index='series_id', columns='step', values='anglez')
-    # data_anglez.fillna(0, inplace=True)
-
-    # data_time = merged_data.pivot(index='series_id', columns='step', values='anglez')
-    # data_anglez.fillna(0, inplace=True)
-        
-    data_matrix = pd.DataFrame(index=merged_data.index)
-    data_matrix['enmo'] = merged_data['enmo']
-    data_matrix['anglez'] = merged_data['anglez']
-    data_matrix['timestamp'] = merged_data['timestamp']
-
-    data_matrix.reset_index(inplace=True)
-    data_matrix.columns.name = None
-    
-    
-    return data_matrix
-    
-    
-
-
+    return filtered_data
 
