@@ -37,15 +37,17 @@ def dataLoadClean():
     return df
     
 
-def plot(merged_data, series_id, start_date=None, end_date=None):
+
+def plot(merged_data, column_name, series_id, start_date=None, end_date=None):
     """
-    Plot ENMO data for a specific series_id with event markers.
+    Plot a specific column data for a specific series_id with event markers.
     
     Parameters:
-    merged_data (DataFrame): The merged DataFrame containing series data and events.
-    series_id (str): The series_id to filter the data by.
-    start_date (str, optional): The start date for filtering the data. Format: 'YYYY-MM-DD'.
-    end_date (str, optional): The end date for filtering the data. Format: 'YYYY-MM-DD'.
+        merged_data (DataFrame): The merged DataFrame containing series data and events.
+        column_name (str): The name of the column to plot.
+        series_id (str): The series_id to filter the data by.
+        start_date (str, optional): The start date for filtering the data. Format: 'YYYY-MM-DD'.
+        end_date (str, optional): The end date for filtering the data. Format: 'YYYY-MM-DD'.
     """
     filtered_series_data = merged_data[merged_data['series_id'] == series_id]
     filtered_series_data['timestamp'] = pd.to_datetime(filtered_series_data['timestamp'])
@@ -55,7 +57,7 @@ def plot(merged_data, series_id, start_date=None, end_date=None):
                                                     (filtered_series_data['timestamp'] <= end_date)]
 
     plt.figure(figsize=(12, 6))
-    plt.plot(filtered_series_data['timestamp'], filtered_series_data['enmo'], label='Raw data', color='blue')
+    plt.plot(filtered_series_data['timestamp'], filtered_series_data[column_name], label=f'{column_name}', color='blue')
 
     onset_data = filtered_series_data[filtered_series_data['event'] == 'onset']
     for _, row in onset_data.iterrows():
@@ -65,12 +67,12 @@ def plot(merged_data, series_id, start_date=None, end_date=None):
     for _, row in wakeup_data.iterrows():
         plt.axvline(row['timestamp'], color='green', linestyle='--')
 
-    custom_legend = [plt.Line2D([0], [0], color='blue', label='Raw data'),
+    custom_legend = [plt.Line2D([0], [0], color='blue', label=f'{column_name}'),
                      plt.Line2D([0], [0], color='red', linestyle='--', label='Onset'),
                      plt.Line2D([0], [0], color='green', linestyle='--', label='Wakeup')]
 
     plt.xlabel('Timestamp')
-    plt.ylabel('ENMO')
+    plt.ylabel(column_name)
     plt.title(f'Series_id: {series_id}')
     plt.grid(True)
     plt.legend(handles=custom_legend)
@@ -79,40 +81,45 @@ def plot(merged_data, series_id, start_date=None, end_date=None):
     plt.show()
 
 
-def low_pass_filter(data, cutoff_freq, filter_order, sampling_rate=0.2, series_id=None):
+def low_pass_filter(data, column_name, cutoff_freq, filter_order, sampling_rate=0.2, series_id=None):
     """
-    Apply a low-pass filter to data and plot the results.
+    Apply a low-pass filter to a specific column of data and plot the results.
 
     Parameters:
-        data (numpy.ndarray): Input data to be filtered.
+        data (pandas.DataFrame): Input DataFrame containing the data.
+        column_name (str): Name of the column to filter.
         cutoff_freq (float): Cutoff frequency for the low-pass filter.
         filter_order (int): Order of the Butterworth filter.
         sampling_rate (float, optional): Sampling rate of the data. Default is 0.2.
         series_id (str, optional): Series ID for filtering a specific subset of data. 
         Default is None.
-        
 
     Returns:
         numpy.ndarray: Filtered data.
     """
     if series_id:
-        data = data[data['series_id'] == series_id]['enmo']
+        data = data[data['series_id'] == series_id]
+
+    if column_name not in data.columns:
+        raise ValueError(f"Column '{column_name}' not found in the DataFrame.")
+
+    signal_data = data[column_name].to_numpy()
 
     nyquist = 0.5 * sampling_rate
     normal_cutoff = cutoff_freq / nyquist
     b, a = butter(filter_order, normal_cutoff, btype='low', analog=False)
-    filtered_data = lfilter(b, a, data)
+    filtered_data = lfilter(b, a, signal_data)
     
     return filtered_data
 
 
-
-def fft(data, sampling_rate=0.2, series_id=None):
+def fft(data, column_name, sampling_rate=0.2, series_id=None):
     """
     Perform Fast Fourier Transform (FFT) on a time-domain signal.
 
     Parameters:
         data (pandas.DataFrame): Input dataframe containing time-domain signals.
+        column_name (str): Name of the column to perform FFT on.
         sampling_rate (float): Sampling rate of the input signals.
         series_id (str, optional): Series ID for filtering a specific subset of data. 
         Default is None.
@@ -122,9 +129,12 @@ def fft(data, sampling_rate=0.2, series_id=None):
         numpy.ndarray: Magnitude spectrum.
     """
     if series_id:
-        data = data[data['series_id'] == series_id]['enmo']
+        data = data[data['series_id'] == series_id]
 
-    signal_data = data.to_numpy()
+    if column_name not in data.columns:
+        raise ValueError(f"Column '{column_name}' not found in the DataFrame.")
+
+    signal_data = data[column_name].to_numpy()
 
     n = len(signal_data)
 
@@ -140,31 +150,30 @@ def fft(data, sampling_rate=0.2, series_id=None):
     return freq, magnitude_spectrum
 
 
-def rolling_average(data, window_size, series_id=None):
+def rolling_average(data, window_size, column_name, series_id=None):
     """
-    Apply a moving average filter to data.
+    Apply a rolling average filter to a specific column of data.
 
     Parameters:
-        data (numpy.ndarray): Input data to be filtered.
+        data (pandas.DataFrame): Input DataFrame containing the data.
         window_size (int): Size of the moving average window.
+        column_name (str): Name of the column to filter.
         series_id (str, optional): Series ID for filtering a specific subset of data. 
         Default is None.
 
     Returns:
-        numpy.ndarray: Filtered data.
+        pandas.Series: Filtered data.
     """
     if series_id:
-        data = data[data['series_id'] == series_id]['enmo']
+        data = data[data['series_id'] == series_id]
 
     if window_size <= 0 or window_size > len(data):
         raise ValueError("Invalid window size")
 
-    filtered_data = np.zeros_like(data)
+    if column_name not in data.columns:
+        raise ValueError(f"Column '{column_name}' not found in the DataFrame.")
 
-    for i in range(len(data)):
-        start_index = max(0, i - window_size // 2)
-        end_index = min(len(data), i + window_size // 2 + 1)
-        filtered_data[i] = np.mean(data[start_index:end_index])
+    filtered_data = data[column_name].rolling(window=window_size, min_periods=1).mean()
 
     return filtered_data
 
