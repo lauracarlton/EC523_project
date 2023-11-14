@@ -180,28 +180,30 @@ def rolling_average(data, window_size, column_name, series_id=None):
 #%%
 #Low pass filtering
 
-df = dataLoadClean()
-
-#%%
-import os
-import pandas as pd
-
-
-script_dir = os.path.dirname(os.path.abspath(__file__))
-data_dir = os.path.join(script_dir, 'Data')
-file_paths = [
-    os.path.join(data_dir, 'training_data_cleaned_part_1.parquet'),
-    os.path.join(data_dir, 'training_data_cleaned_part_2.parquet'),
-    os.path.join(data_dir, 'training_data_cleaned_part_3.parquet'),
-    os.path.join(data_dir, 'training_data_cleaned_part_4.parquet')
-]
-
-for file_path in file_paths:
-    df = pd.read_parquet(file_path, engine='pyarrow')
+if __name__ == '__main__':
     
-    df['enmo_lpf'] = low_pass_filter(df, column_name='enmo', cutoff_freq=0.01, filter_order=2)
-    df['anglez_lpf'] = low_pass_filter(df, column_name='anglez', cutoff_freq=0.01, filter_order=2)
+    df = dataLoadClean()
     
-    df.to_parquet(file_path, engine='pyarrow', index=False)
+    #%%
+    import os
+    import pandas as pd
+    
+    
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.join(script_dir, 'Data')
+    file_paths = [
+        os.path.join(data_dir, 'training_data_cleaned_part_1.parquet'),
+        os.path.join(data_dir, 'training_data_cleaned_part_2.parquet'),
+        os.path.join(data_dir, 'training_data_cleaned_part_3.parquet'),
+        os.path.join(data_dir, 'training_data_cleaned_part_4.parquet')
+    ]
+    
+    for file_path in file_paths:
+        df = pd.read_parquet(file_path, engine='pyarrow')
+        
+        df['enmo_lpf'] = low_pass_filter(df, column_name='enmo', cutoff_freq=0.01, filter_order=2)
+        df['anglez_lpf'] = low_pass_filter(df, column_name='anglez', cutoff_freq=0.01, filter_order=2)
+        
+        df.to_parquet(file_path, engine='pyarrow', index=False)
                
                       
